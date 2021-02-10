@@ -211,8 +211,281 @@ GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32
     return meshData;
 }
  
+//Step 3 :
 GeometryGenerator::MeshData GeometryGenerator::CreateCone(float radius, float height, uint32 sliceCount, uint32 stackCount)
 {
+	MeshData meshData;
+
+	//
+	// Build Stacks.
+	// 
+
+	float stackHeight = height / stackCount;
+
+	// Amount to increment radius as we move up each stack level from bottom to top.
+	float radiusStep = (0.0f - radius) / stackCount;
+
+	uint32 ringCount = stackCount + 1;
+
+	// Compute vertices for each stack ring starting at the bottom and moving up.
+	for (uint32 i = 0; i < ringCount - 1; ++i)
+	{
+		float y = -0.5f * height + i * stackHeight;
+		float r = radius + i * radiusStep;
+
+		// vertices of ring
+		float dTheta = 2.0f * XM_PI / sliceCount;
+		for (uint32 j = 0; j <= sliceCount; ++j)
+		{
+			Vertex vertex;
+
+			float c = cosf(j * dTheta);
+			float s = sinf(j * dTheta);
+
+			vertex.Position = XMFLOAT3(r * c, y, r * s);
+
+			vertex.TexC.x = (float)j / sliceCount;
+			vertex.TexC.y = 1.0f - (float)i / stackCount;
+
+			// This is unit length.
+			vertex.TangentU = XMFLOAT3(-s, 0.0f, c);
+
+			XMFLOAT3 bitangent(radius * c, -height, radius * s);
+
+			XMVECTOR T = XMLoadFloat3(&vertex.TangentU);
+			XMVECTOR B = XMLoadFloat3(&bitangent);
+			XMVECTOR N = XMVector3Normalize(XMVector3Cross(T, B));
+			XMStoreFloat3(&vertex.Normal, N);
+
+			meshData.Vertices.push_back(vertex);
+		}
+	}
+
+	// Add one because we duplicate the first and last vertex per ring
+	// since the texture coordinates are different.
+	uint32 ringVertexCount = sliceCount + 1;
+
+	// Compute indices for each stack.
+	for (uint32 i = 0; i < stackCount - 1; ++i)
+	{
+		for (uint32 j = 0; j < sliceCount; ++j)
+		{
+			meshData.Indices32.push_back(i * ringVertexCount + j);
+			meshData.Indices32.push_back((i + 1) * ringVertexCount + j);
+			meshData.Indices32.push_back((i + 1) * ringVertexCount + j + 1);
+
+			meshData.Indices32.push_back(i * ringVertexCount + j);
+			meshData.Indices32.push_back((i + 1) * ringVertexCount + j + 1);
+			meshData.Indices32.push_back(i * ringVertexCount + j + 1);
+		}
+	}
+
+	// Add the tip
+	meshData.Vertices.push_back(Vertex(0.0f, height * 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.5f, 0.5f));
+
+	// Add the indices connecting to the tip
+	uint32 centerIndex = (uint32)meshData.Vertices.size() - 1;
+	uint32 baseIndex = (stackCount - 1) * ringVertexCount;
+	for (uint32 i = 0; i < sliceCount; ++i)
+	{
+		meshData.Indices32.push_back(centerIndex);
+		meshData.Indices32.push_back(baseIndex + i + 1);
+		meshData.Indices32.push_back(baseIndex + i);
+	}
+
+
+	BuildCylinderBottomCap(radius, 0.0f, height, sliceCount, stackCount, meshData);
+
+	return MeshData();
+}
+
+//Step 4 : 
+GeometryGenerator::MeshData GeometryGenerator::CreateStar(float width, float height, float depth, uint32 numSubdivisions)
+{
+	MeshData meshData;
+
+	//
+	// Create the vertices.
+	//
+
+	Vertex v[6];
+
+	float w2 = 0.5f * width;
+	float h2 = 0.5f * height;
+	float d2 = 0.5f * depth;
+
+	// Top
+	v[0] = Vertex(0.0f, h2, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);		// Peak
+	v[1] = Vertex(0.0f, 0.0f, d2, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);		// Front
+	v[2] = Vertex(w2, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);		// Right
+	v[3] = Vertex(0.0f, 0.0f, -d2, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);	// Back
+	v[4] = Vertex(-w2, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);	// Left
+	v[5] = Vertex(0.0f, -h2, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);	// Base
+
+
+	meshData.Vertices.assign(&v[0], &v[6]);
+
+	//
+	// Create the indices.
+	//
+
+	uint32 i[24];
+
+	i[0] = 0; i[1] = 1; i[2] = 2;
+	i[3] = 0; i[4] = 2; i[5] = 3;
+	i[6] = 0; i[7] = 3; i[8] = 4;
+	i[9] = 0; i[10] = 4; i[11] = 1;
+
+	i[12] = 5; i[13] = 2; i[14] = 1;
+	i[15] = 5; i[16] = 3; i[17] = 2;
+	i[18] = 5; i[19] = 4; i[20] = 3;
+	i[21] = 5; i[22] = 1; i[23] = 4;
+
+	meshData.Indices32.assign(&i[0], &i[24]);
+
+	// Put a cap on the number of subdivisions.
+	numSubdivisions = std::min<uint32>(numSubdivisions, 6u);
+
+	for (uint32 i = 0; i < numSubdivisions; ++i)
+		Subdivide(meshData);
+
+
+	return MeshData();
+}
+
+GeometryGenerator::MeshData GeometryGenerator::CreatePyramid(float width, float height, float depth, uint32 numSubdivisions)
+{
+	MeshData meshData;
+
+	float w2 = width * 0.5f;
+	float h2 = height * 0.5f;
+	float d2 = depth * 0.5f;
+
+	// Vertex positions
+	XMFLOAT3 pos[16] =
+	{
+		// bottom face vertices
+		XMFLOAT3(-w2, 0, -d2),			// 0
+		XMFLOAT3(+w2, 0, -d2),			// 1
+		XMFLOAT3(+w2, 0, +d2),			// 2
+		XMFLOAT3(-w2, 0, +d2),			// 3
+
+		// front triangle vertices
+		XMFLOAT3(0.0f, h2, 0.0f),		// 4
+		XMFLOAT3(-w2, 0, -d2),			// 5 (0)
+		XMFLOAT3(+w2, 0, -d2),			// 6 (1)
+
+
+		// right triangle vertices
+		XMFLOAT3(0.0f, h2, 0.0f),		// 7  (4)
+		XMFLOAT3(+w2, 0, -d2),			// 8  (1)
+		XMFLOAT3(+w2, 0, +d2),			// 9  (2)
+
+		// back triangle vertices
+		XMFLOAT3(0.0f, h2, 0.0f),		// 10 (4)
+		XMFLOAT3(+w2, 0, +d2),			// 11 (2)
+		XMFLOAT3(-w2, 0, +d2),			// 12 (3)
+
+		// left triangle vertices		
+		XMFLOAT3(0.0f, h2, 0.0f),		// 13  (4)
+		XMFLOAT3(-w2, 0, +d2),			// 14  (3)
+		XMFLOAT3(-w2, 0, -d2)			// 15  (0)
+
+	};
+
+	//XMVECTOR tempVectors[16]; // to hold the XMFLOAT3's for 
+
+	//// transforming floats into Vectors for cross product calculations
+	//for (int i = 0; i < 16; i++)
+	//{
+	//	tempVectors[i] = XMLoadFloat3(&pos[i]);
+	//}
+
+	//for (int i = 4; i < 16; i = i + 3)
+	//{
+	//	XMVECTOR u = tempVectors[i + 1] - tempVectors[i];
+	//	XMVECTOR v = tempVectors[i + 2] - tempVectors[i];
+	//	XMVECTOR t = tempVectors[i + 2] - tempVectors[i + 1];
+
+	//	tempVectors[i] = XMVector3Normalize(XMVector3Cross(u, v));
+	//	tempVectors[i + 1] = XMVector3Normalize(XMVector3Cross(u, v));
+	//	tempVectors[i + 2] = XMVector3Normalize(XMVector3Cross(u, v));
+
+	//	XMStoreFloat3(&normals[i], tempVectors[i]);
+	//	XMStoreFloat3(&normals[i + 1], tempVectors[i + 1]);
+	//	XMStoreFloat3(&normals[i + 2], tempVectors[i + 2]);
+
+	//	XMStoreFloat3(&tangents[i], XMVector3Normalize(u));
+	//	XMStoreFloat3(&tangents[i + 1], XMVector3Normalize(v));
+	//	XMStoreFloat3(&tangents[i + 2], XMVector3Normalize(t));
+
+	//}
+
+	//// uvs
+	//XMFLOAT2 uvs[16] =
+	//{
+	//	XMFLOAT2(0.0f, 0.0f),
+	//	XMFLOAT2(0.0f, 1.0f),
+	//	XMFLOAT2(1.0f, 1.0f),
+	//	XMFLOAT2(1.0f, 0.0f),
+
+	//	XMFLOAT2(0.5f, 0.0f),
+	//	XMFLOAT2(0.0f, 1.0f),
+	//	XMFLOAT2(1.0f, 1.0f),
+
+	//	XMFLOAT2(0.5f, 0.0f),
+	//	XMFLOAT2(0.0f, 1.0f),
+	//	XMFLOAT2(1.0f, 1.0f),
+
+	//	XMFLOAT2(0.5f, 0.0f),
+	//	XMFLOAT2(0.0f, 1.0f),
+	//	XMFLOAT2(1.0f, 1.0f),
+
+	//	XMFLOAT2(0.5f, 0.0f),
+	//	XMFLOAT2(0.0f, 1.0f),
+	//	XMFLOAT2(1.0f, 1.0f),
+	//};
+
+	//// create the vertices
+	//for (int i = 0; i < 16; i++)
+	//{
+	//	meshData.Vertices.push_back(Vertex(pos[i], normals[i], tangents[i], uvs[i]));
+	//}
+
+	// --------- create the indices ----------------
+
+	uint32 i[18];
+
+	// bottom face
+	i[0] = 0; i[1] = 1; i[2] = 2;
+	i[3] = 0; i[4] = 2; i[5] = 3;
+
+	// front triangle
+	i[6] = 4; i[7] = 1; i[8] = 0;
+
+	// right triangle
+	i[9] = 4; i[10] = 2; i[11] = 1;
+
+	// back triangle
+	i[12] = 4; i[13] = 3; i[14] = 2;
+
+	// left triangle
+	i[15] = 4; i[16] = 0; i[17] = 3;
+
+	meshData.Indices32.assign(&i[0], &i[18]);
+
+
+	// bottom vertex face data
+	//vertices[0] = Vertex(-w2, 0.0f, -w2, 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+
+	 // Put a cap on the number of subdivisions.
+	numSubdivisions = std::min<uint32>(numSubdivisions, 6u);
+
+	for (uint32 i = 0; i < numSubdivisions; ++i)
+		Subdivide(meshData);
+
+	//return meshData;
+
 	return MeshData();
 }
 

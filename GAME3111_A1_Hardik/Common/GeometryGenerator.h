@@ -116,6 +116,8 @@ public:
 	//Step 2 : CreateStar (Reference : CreateGeosphere,using draw manually sketch on the book)
 	MeshData CreateStar(float width, float height, float depth, uint32 numSubdivisions);
 
+	MeshData CreatePyramid(float width, float height, float depth, uint32 numSubdivisions);
+
 	void Subdivide(MeshData& meshData);
 private:
 	
