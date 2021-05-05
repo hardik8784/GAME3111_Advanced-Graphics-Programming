@@ -1,2 +1,12 @@
-﻿  Week4-1-ShapesAppUsingDescriptorTable.cpp
+﻿  Camera.cpp
+  d3dApp.cpp
+  d3dUtil.cpp
+  DDSTextureLoader.cpp
+  GameTimer.cpp
+  GeometryGenerator.cpp
+  MathHelper.cpp
+  FrameResource.cpp
+  Week4-1-ShapesAppUsingDescriptorTable.cpp
+  Week4-2-ShapeAppsUsingRootDescriptor.cpp
+  Generating Code...
   Assignment1_Hardik.vcxproj -> H:\GAME3111_Advanced Graphics Programming\GAME3111_A1_Hardik\Assignment1_Hardik\x64\Debug\Assignment1_Hardik.exe
