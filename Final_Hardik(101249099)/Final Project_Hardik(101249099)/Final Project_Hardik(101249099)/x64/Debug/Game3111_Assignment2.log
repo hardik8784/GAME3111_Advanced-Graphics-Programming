@@ -1,0 +1,13 @@
+﻿C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppBuild.targets(491,5): warning MSB8028: The intermediate directory (x64\Debug\) contains files shared from another project (A2_Hardik(101249099).vcxproj).  This can lead to incorrect clean and rebuild behavior.
+  Camera.cpp
+  d3dApp.cpp
+  d3dUtil.cpp
+  DDSTextureLoader.cpp
+  GameTimer.cpp
+  GeometryGenerator.cpp
+  MathHelper.cpp
+  main.cpp
+  FrameResource.cpp
+  Waves.cpp
+  Generating Code...
+  Game3111_Assignment2.vcxproj -> H:\GAME3111_Advanced Graphics Programming\Final_Hardik(101249099)\Final Project_Hardik(101249099)\Final Project_Hardik(101249099)\x64\Debug\Final_Hardik(101249099).exe
